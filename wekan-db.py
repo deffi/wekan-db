@@ -3,6 +3,7 @@ from typing import List
 import pymongo
 from pymongo.collection import Collection
 import typer
+from attrdict import AttrDict
 
 app = typer.Typer()
 
@@ -57,7 +58,7 @@ def find_first_swimlane_id(swimlanes: Collection, board_id: str) -> str:
 
 @app.command()
 def move_cards(from_board: str, from_list: str, to_board: str, to_list: str):
-    client = pymongo.MongoClient(server_host, server_port)
+    client = pymongo.MongoClient(server_host, server_port, document_class=AttrDict)
 
     db = client["wekan"]
 
