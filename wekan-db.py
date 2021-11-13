@@ -11,6 +11,12 @@ server_host = "localhost"
 server_port = 27019
 
 
+class ADict(AttrDict):
+    @property
+    def id(self):
+        return self["_id"]
+
+
 @app.callback()
 def callback(host: str = "localhost", port: int = 27017):
     global server_host
@@ -43,7 +49,7 @@ def find_swimlane(swimlanes: Collection, board_id: str) -> Optional[AttrDict]:
 
 @app.command()
 def move_cards(from_board: str, from_list: str, to_board: str, to_list: str):
-    client = pymongo.MongoClient(server_host, server_port, document_class=AttrDict)
+    client = pymongo.MongoClient(server_host, server_port, document_class=ADict)
 
     db = client["wekan"]
 
@@ -55,8 +61,8 @@ def move_cards(from_board: str, from_list: str, to_board: str, to_list: str):
     assert len(to_boards) == 1
     to_board = to_boards[0]
 
-    from_lists = find_lists(db["lists"], from_board["_id"], from_list)
-    to_lists   = find_lists(db["lists"], to_board  ["_id"], to_list)
+    from_lists = find_lists(db["lists"], from_board.id, from_list)
+    to_lists   = find_lists(db["lists"], to_board  .id, to_list)
 
     assert len(from_lists) == 1
     assert len(to_lists) == 1
@@ -64,14 +70,14 @@ def move_cards(from_board: str, from_list: str, to_board: str, to_list: str):
     from_list = from_lists[0]
     to_list = to_lists[0]
 
-    to_swimlane = find_swimlane(db["swimlanes"], to_board["_id"])
+    to_swimlane = find_swimlane(db["swimlanes"], to_board.id)
 
     result = db["cards"].update_many(filter={"archived": False,
-                                             "boardId": from_board["_id"],
-                                             "listId": from_list["_id"]},
-                                     update={"$set": {"boardId": to_board["_id"],
-                                                      "swimlaneId": to_swimlane["_id"],
-                                                      "listId": to_list["_id"]}})
+                                             "boardId": from_board.id,
+                                             "listId": from_list.id},
+                                     update={"$set": {"boardId": to_board.id,
+                                                      "swimlaneId": to_swimlane.id,
+                                                      "listId": to_list.id}})
     print(f"{result.modified_count} cards moved")
 
     # TODO user ID
