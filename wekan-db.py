@@ -6,10 +6,17 @@ import typer
 
 app = typer.Typer()
 
+server_host = "localhost"
+server_port = 27019
+
 
 @app.callback()
-def callback():
-    pass
+def callback(host: str = "localhost", port: int = 27017):
+    global server_host
+    global server_port
+
+    server_host = host
+    server_port = port
 
 
 def find_board_id(boards: Collection, title: str) -> str:
@@ -49,9 +56,8 @@ def find_first_swimlane_id(swimlanes: Collection, board_id: str) -> str:
 
 
 @app.command()
-def move_cards(from_board: str, from_list: str, to_board: str, to_list: str,
-               host: str = "localhost", port: int = 27017):
-    client = pymongo.MongoClient(host, port)
+def move_cards(from_board: str, from_list: str, to_board: str, to_list: str):
+    client = pymongo.MongoClient(server_host, server_port)
 
     db = client["wekan"]
 
