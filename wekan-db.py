@@ -49,8 +49,9 @@ def find_first_swimlane_id(swimlanes: Collection, board_id: str) -> str:
 
 
 @app.command()
-def move_cards(from_board: str, from_list: str, to_board: str, to_list: str):
-    client = pymongo.MongoClient("localhost", 27019)
+def move_cards(from_board: str, from_list: str, to_board: str, to_list: str,
+               host: str = "localhost", port: int = 27017):
+    client = pymongo.MongoClient(host, port)
 
     db = client["wekan"]
 
