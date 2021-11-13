@@ -13,6 +13,7 @@ app = typer.Typer()
 server_host = "localhost"
 server_port = 27019
 verbose = False
+dry = False
 
 
 class ADict(AttrDict):
@@ -28,14 +29,17 @@ def vprint(*args, **kwargs):
 
 @app.callback()
 def callback(host: str = "localhost", port: int = 27017,
-             verbose_: bool = typer.Option(False, "--verbose", "-v")):
+             verbose_: bool = typer.Option(False, "--verbose", "-v"),
+             dry_: bool = typer.Option(False, "--dry")):
     global server_host
     global server_port
     global verbose
+    global dry
 
     server_host = host
     server_port = port
     verbose = verbose_
+    dry = dry_
 
 
 def find_boards(boards: Collection, title: str) -> List[AttrDict]:
@@ -108,14 +112,17 @@ def move_cards(from_board_title: str, from_list_title: str, to_board_title: str,
     total_moved = 0
     for from_board, from_list in from_boards_lists:
         vprint(f"Moving cards from list {from_list.id} in board {from_board.id}...", end="")
-        result = db["cards"].update_many(filter={"archived": False,
-                                                 "boardId": from_board.id,
-                                                 "listId": from_list.id},
-                                         update={"$set": {"boardId": to_board.id,
-                                                          "swimlaneId": to_swimlane.id,
-                                                          "listId": to_list.id}})
-        vprint(f"{result.modified_count} moved")
-        total_moved += result.modified_count
+        if dry:
+            vprint("skipped")
+        else:
+            result = db["cards"].update_many(filter={"archived": False,
+                                                     "boardId": from_board.id,
+                                                     "listId": from_list.id},
+                                             update={"$set": {"boardId": to_board.id,
+                                                              "swimlaneId": to_swimlane.id,
+                                                              "listId": to_list.id}})
+            vprint(f"{result.modified_count} moved")
+            total_moved += result.modified_count
 
     print(f"{total_moved} cards moved, {existing_card_count} already there")
 
