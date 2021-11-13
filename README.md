@@ -25,7 +25,7 @@ Basic usage (example):
 
     wekan-db.py "General" "TODO" "Projects" "Open"
 
-This moves all cards from list `todo` on board `General` to list `Open` on board
+This moves all cards from list `TODO` on board `General` to list `Open` on board
 `Projects`.
 
 If there are multiple lists source lists with the same name, you need to specify
