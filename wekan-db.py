@@ -1,3 +1,10 @@
+# TODO:
+#   * user ID
+#   * handle multiple from lists with the same title
+#   * handle multiple from boards with the same title
+#   * handle multiple to lists with the same title
+#   * handle multiple to boards with the same title
+
 from typing import List, Optional
 
 import pymongo
@@ -79,8 +86,6 @@ def move_cards(from_board_title: str, from_list_title: str, to_board_title: str,
                                                       "swimlaneId": to_swimlane.id,
                                                       "listId": to_list.id}})
     print(f"{result.modified_count} cards moved")
-
-    # TODO user ID
 
 
 if __name__ == "__main__":
