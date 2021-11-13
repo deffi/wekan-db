@@ -1,11 +1,7 @@
 # TODO:
 #   * user ID
-#   * handle multiple from lists with the same title
-#   * handle multiple from boards with the same title
-#   * handle multiple to lists with the same title
-#   * handle multiple to boards with the same title
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import pymongo
 from pymongo.collection import Collection
@@ -41,51 +37,73 @@ def find_boards(boards: Collection, title: str) -> List[AttrDict]:
 
 
 def find_lists(lists: Collection, board_id: str, title: str) -> List[AttrDict]:
-    print(f"Finding list {title!r} in board {board_id!r}...", end="")
+    print(f"Finding list {title!r} in board {board_id}...", end="")
     result = list(lists.find({"archived": False, "boardId": board_id, "title": title}))
     print(", ".join(document["_id"] for document in result))
     return result
 
 
+def find_boards_lists(boards: Collection, lists: Collection, board_title: str, list_title: str)\
+        -> List[Tuple[AttrDict, AttrDict]]:
+    return [(board, list_)
+            for board in find_boards(boards, board_title)
+            for list_ in find_lists(lists, board.id, list_title)]
+
+
+def count_cards(cards: Collection, list_id: str) -> int:
+    return cards.count_documents({"archived": False, "listId": list_id})
+
+
 def find_swimlane(swimlanes: Collection, board_id: str) -> Optional[AttrDict]:
-    print(f"Finding a swimlane in board {board_id!r}...", end="")
+    print(f"Finding a swimlane in board {board_id}...", end="")
     result = swimlanes.find_one({"archived": False, "boardId": board_id})
     print(result["_id"] if result is not None else "not found")
     return result
 
 
 @app.command()
-def move_cards(from_board_title: str, from_list_title: str, to_board_title: str, to_list_title: str):
+def move_cards(from_board_title: str, from_list_title: str, to_board_title: str, to_list_title: str,
+               merge_source: bool = False, merge_target: bool = False):
     client = pymongo.MongoClient(server_host, server_port, document_class=ADict)
 
     db = client["wekan"]
 
-    from_boards = find_boards(db["boards"], from_board_title)
-    assert len(from_boards) == 1
-    from_board = from_boards[0]
+    from_boards_lists = find_boards_lists(db["boards"], db["lists"], from_board_title, from_list_title)
+    if len(from_boards_lists) == 0:
+        print(f"No list named {from_list_title!r} in board(s) {from_board_title!r}.")
+        raise typer.Exit(1)
+    elif len(from_boards_lists) > 1 and not merge_source:
+        print(f"Multiple lists named {from_list_title!r} in board(s) {from_board_title!r}."
+              " Specify --merge-source to merge.")
+        raise typer.Exit(1)
 
-    to_boards = find_boards(db["boards"], to_board_title)
-    assert len(to_boards) == 1
-    to_board = to_boards[0]
+    to_boards_lists = find_boards_lists(db["boards"], db["lists"], to_board_title, to_list_title)
+    if len(to_boards_lists) == 0:
+        print(f"No list named {to_list_title!r} in board(s) {to_board_title!r}.")
+        raise typer.Exit(1)
+    elif len(to_boards_lists) > 1:
+        print(f"Ambiguous target {to_list_title!r} in board(s) {to_board_title!r}")
+        raise typer.Exit(1)
+    to_board, to_list = to_boards_lists[0]
 
-    from_lists = find_lists(db["lists"], from_board.id, from_list_title)
-    to_lists   = find_lists(db["lists"], to_board  .id, to_list_title)
-
-    assert len(from_lists) == 1
-    assert len(to_lists) == 1
-
-    from_list = from_lists[0]
-    to_list = to_lists[0]
+    existing_card_count = count_cards(db["cards"], to_list.id)
+    if existing_card_count > 0 and not merge_target:
+        print(f"The target list is not empty. Specify --merge-target to merge.")
+        raise typer.Exit(1)
 
     to_swimlane = find_swimlane(db["swimlanes"], to_board.id)
 
-    result = db["cards"].update_many(filter={"archived": False,
-                                             "boardId": from_board.id,
-                                             "listId": from_list.id},
-                                     update={"$set": {"boardId": to_board.id,
-                                                      "swimlaneId": to_swimlane.id,
-                                                      "listId": to_list.id}})
-    print(f"{result.modified_count} cards moved")
+    total_moved = 0
+    for from_board, from_list in from_boards_lists:
+        result = db["cards"].update_many(filter={"archived": False,
+                                                 "boardId": from_board.id,
+                                                 "listId": from_list.id},
+                                         update={"$set": {"boardId": to_board.id,
+                                                          "swimlaneId": to_swimlane.id,
+                                                          "listId": to_list.id}})
+        total_moved += result.modified_count
+
+    print(f"{total_moved} cards moved, {existing_card_count} already there")
 
 
 if __name__ == "__main__":
