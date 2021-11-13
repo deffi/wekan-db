@@ -48,21 +48,21 @@ def find_swimlane(swimlanes: Collection, board_id: str) -> Optional[AttrDict]:
 
 
 @app.command()
-def move_cards(from_board: str, from_list: str, to_board: str, to_list: str):
+def move_cards(from_board_title: str, from_list_title: str, to_board_title: str, to_list_title: str):
     client = pymongo.MongoClient(server_host, server_port, document_class=ADict)
 
     db = client["wekan"]
 
-    from_boards = find_boards(db["boards"], from_board)
+    from_boards = find_boards(db["boards"], from_board_title)
     assert len(from_boards) == 1
     from_board = from_boards[0]
 
-    to_boards = find_boards(db["boards"], to_board)
+    to_boards = find_boards(db["boards"], to_board_title)
     assert len(to_boards) == 1
     to_board = to_boards[0]
 
-    from_lists = find_lists(db["lists"], from_board.id, from_list)
-    to_lists   = find_lists(db["lists"], to_board  .id, to_list)
+    from_lists = find_lists(db["lists"], from_board.id, from_list_title)
+    to_lists   = find_lists(db["lists"], to_board  .id, to_list_title)
 
     assert len(from_lists) == 1
     assert len(to_lists) == 1
